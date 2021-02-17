@@ -29,16 +29,18 @@ func goDotEnvVariable(key string) string {
 // message is created on any channel that the authenticated bot has access to.
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
-	// Authorized channels.
-	labChannel := "242453642362355712"
-	dmChannel := "713865223584481301"
+	// Authorized channels
+	channels := map[string]bool{
+		"242453642362355712": true,
+		"713865223584481301": true,
+	}
 
 	// Ignore all messages created by the bot itself
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
 
-	if (m.ChannelID != labChannel) || (m.ChannelID != dmChannel) {
+	if channels[m.ChannelID] {
 
 		fmt.Println("Message from", m.Author.ID, "in", m.ChannelID, "| Message:", m.Content)
 

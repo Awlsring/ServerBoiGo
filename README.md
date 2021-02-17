@@ -1,2 +1,2 @@
 # ServerBoiGo
-Trying out go by porting ServerBoi
+Trying out Go by porting ServerBoi
