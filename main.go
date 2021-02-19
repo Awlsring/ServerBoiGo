@@ -7,9 +7,25 @@ import (
 	"os/signal"
 	"syscall"
 
+	"ServerBoi/lib"
+
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
 )
+
+// Authorized channels
+var channels = map[string]bool{
+	"242453642362355712": true,
+	"713865223584481301": true,
+}
+
+var commandMap = map[string]func(s *discordgo.Session, m *discordgo.MessageCreate){
+	"no u": test,
+}
+
+func test(s *discordgo.Session, m *discordgo.MessageCreate) {
+	fmt.Println("Message from")
+}
 
 // use godot package to load/read the .env file and
 // return the value of the key
@@ -54,6 +70,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 }
 
 func main() {
+
+	lib.Butts()
 
 	token := goDotEnvVariable("DISCORD_TOKEN")
 
