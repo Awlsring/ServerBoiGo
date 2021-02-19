@@ -55,14 +55,13 @@ func CreateEc2Client(region string) ec2.Client {
 
 	// value, err := creds.Retrieve(context.TODO())
 
-	ec2cfg, err := config.LoadDefaultConfig(context.TODO(),
-		config.WithCredentialsProvider(creds),
-		config.WithRegion(region),
-	)
+	client := ec2.New(ec2.Options{
+		Region:      region,
+		Credentials: creds,
+	})
 	if err != nil {
 		log.Fatalf("unable to load SDK config, %v", err)
 	}
-	client := ec2.NewFromConfig(ec2cfg)
 
 	ec2input := &ec2.DescribeInstancesInput{
 		InstanceIds: []string{
@@ -71,8 +70,20 @@ func CreateEc2Client(region string) ec2.Client {
 	}
 
 	resp, err := client.DescribeInstances(context.TODO(), ec2input)
+	if err != nil {
+		fmt.Println("Got an error retrieving information about your Amazon EC2 instances:")
+		fmt.Println(err)
+	}
 
-	fmt.Println(resp)
+	for _, r := range resp.Reservations {
+		fmt.Println("Reservation ID: " + *r.ReservationId)
+		fmt.Println("Instance IDs:")
+		for _, i := range r.Instances {
+			fmt.Println("   " + *i.InstanceId)
+		}
+
+		fmt.Println("")
+	}
 
 	return *client
 }
