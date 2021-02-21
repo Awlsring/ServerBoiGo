@@ -15,19 +15,10 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type Conversation struct {
-	UserID int
-	CommandTree CommandTree
-}
-
-type CommandTree struct {
-	Command string
-}
-
 // Globals Vars
 var servers = cfg.LoadConfig()
 
-var conversations = map[s]
+var conversations = make(map[string]commands.Conversation)
 
 // Disallowed channels. (TODO Load from config)
 var channels = map[string]bool{
@@ -75,17 +66,29 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	// convoKey := fmt.Sprintf("%v-%v", m.Author.ID, m.ChannelID)
+
+	// if convo, ok := conversations[convoKey]; ok {
+	// 	// Resume convo logic
+	// 	fmt.Println("Resuming conversation")
+	// 	convo.CommandTree.Command()
+	// }
+
+	messageSlice := strings.Split(m.Content, " ")
+
 	// If valid channel and has ! at the start.
 	if !channels[m.ChannelID] && strings.HasPrefix(m.Content, "!") {
 
 		fmt.Println("Message from", m.Author.ID, "in", m.ChannelID, "| Message:", m.Content)
 
-		messageSlice := strings.Split(m.Content, " ")
 		command := messageSlice[0]
 
 		if command, ok := commandMap[command]; ok {
 			go command(s, m, servers, messageSlice)
 		}
+	} else {
+		fmt.Println("Else")
+		commands.Fun(s, m)
 	}
 
 }
