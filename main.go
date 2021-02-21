@@ -5,26 +5,51 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
-	"ServerBoi/lib"
+	"ServerBoi/cfg"
+	"ServerBoi/commands"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
 )
 
-// Authorized channels
+type Conversation struct {
+	UserID int
+	CommandTree CommandTree
+}
+
+type CommandTree struct {
+	Command string
+}
+
+// Globals Vars
+var servers = cfg.LoadConfig()
+
+var conversations = map[s]
+
+// Disallowed channels. (TODO Load from config)
 var channels = map[string]bool{
-	"242453642362355712": true,
-	"713865223584481301": true,
+	"170364850256609280": false,
+	"666432608539901963": false,
+	"453802459379269633": false,
+	"278255133891100673": false,
+	"316003727506931713": false,
+	"585951696753131520": false,
+	"616679427979476994": false,
+	"711488008351645758": false,
+	"186263688603369473": false,
+	"698658837447704707": false,
 }
 
-var commandMap = map[string]func(s *discordgo.Session, m *discordgo.MessageCreate){
-	"no u": test,
-}
-
-func test(s *discordgo.Session, m *discordgo.MessageCreate) {
-	fmt.Println("Message from")
+var commandMap = map[string]func(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string){
+	"!start":  commands.Start,
+	"!stop":   commands.Stop,
+	"!reboot": commands.Reboot,
+	"!info":   commands.Info,
+	"!list":   commands.List,
+	"!help":   commands.Help,
 }
 
 // use godot package to load/read the .env file and
@@ -45,33 +70,29 @@ func goDotEnvVariable(key string) string {
 // message is created on any channel that the authenticated bot has access to.
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
-	// Authorized channels
-	channels := map[string]bool{
-		"242453642362355712": true,
-		"713865223584481301": true,
-	}
-
 	// Ignore all messages created by the bot itself
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
 
-	if channels[m.ChannelID] {
+	// If valid channel and has ! at the start.
+	if !channels[m.ChannelID] && strings.HasPrefix(m.Content, "!") {
 
 		fmt.Println("Message from", m.Author.ID, "in", m.ChannelID, "| Message:", m.Content)
 
-		// The classic
-		if m.Content == "no u" {
-			s.ChannelMessageSend(m.ChannelID, "no u")
-		}
+		messageSlice := strings.Split(m.Content, " ")
+		command := messageSlice[0]
 
+		if command, ok := commandMap[command]; ok {
+			go command(s, m, servers, messageSlice)
+		}
 	}
 
 }
 
-func main() {
+/// Maybe take all config stuff to its own file?
 
-	lib.Butts()
+func main() {
 
 	token := goDotEnvVariable("DISCORD_TOKEN")
 
@@ -80,6 +101,14 @@ func main() {
 	if err != nil {
 		fmt.Println("error creating Discord session,", err)
 		return
+	}
+
+	dg.Identify.Presence = discordgo.GatewayStatusUpdate{
+		Game: discordgo.Activity{
+			Name: "you | Use !help to start",
+			Type: discordgo.ActivityTypeListening,
+			URL:  "https://github.com/Awlsring/ServerBoiGo",
+		},
 	}
 
 	// Register the messageCreate func as a callback for MessageCreate events.
