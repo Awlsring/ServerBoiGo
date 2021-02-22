@@ -1,0 +1,26 @@
+{
+    "Servers": [
+        {
+            "ID": 1,
+            "Game": "valheim",
+            "Name": "Escape Discord Server",
+            "ServerInfo": {
+                "Password": "yeetus",
+                "Port": "2457"
+            },
+            "ServiceInfo": {
+                "Service": "aws",
+                "AccountID": "576187103674",
+                "Region": "us-west-1",
+                "InstanceID": "i-044e820ec4e8b0335"
+            },
+            "Owner": "96089969990336512"
+        }
+    ],
+    "Admin": [
+        "155875705417236480",
+        "96089969990336512",
+        "177906920835776512",
+        "145259816544108544"
+    ]
+}

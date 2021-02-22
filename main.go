@@ -39,6 +39,7 @@ var commandMap = map[string]func(s *discordgo.Session, m *discordgo.MessageCreat
 	"!stop":   commands.Stop,
 	"!reboot": commands.Reboot,
 	"!info":   commands.Info,
+	"!server": commands.Server,
 	"!list":   commands.List,
 	"!help":   commands.Help,
 }

@@ -26,15 +26,18 @@ type CommandTree struct {
 	Correction   bool   `default:"false"`
 }
 
-func getTargetServer(messageSlice []string, servers map[int]cfg.Server) cfg.Server {
-	serverID, err := strconv.Atoi(messageSlice[2])
+func getTargetServer(target string, servers map[int]cfg.Server) (cfg.Server, string) {
+	serverID, err := strconv.Atoi(target)
 	if err != nil {
 		log.Fatalf("Cant convert given id to int")
 	}
 
-	targetServer := servers[serverID]
+	if server, ok := servers[serverID]; ok {
+		return server, ""
+	} else {
+		return cfg.Server{}, "Server ID doesnt exist in tracked servers."
+	}
 
-	return targetServer
 }
 
 func AddServer(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
@@ -143,10 +146,62 @@ func sorryFunc(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 }
 
+func Server(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
+
+	subcommand := messageSlice[1]
+
+	serverFunctions := map[string]func(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string){
+		"start":     Start,
+		"stop":      Stop,
+		"reboot":    Reboot,
+		"info":      Info,
+		"authorize": authorizeOnServer,
+	}
+
+	if serverFunc, ok := serverFunctions[subcommand]; ok {
+		serverFunc(s, m, servers, messageSlice)
+	} else {
+		msg := "'%v' is not a valid option for !server"
+
+		s.ChannelMessageSend(m.ChannelID, msg)
+	}
+
+}
+
+func authorizeOnServer(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
+	fmt.Println("Authorize")
+
+	server, er := getTargetServer(messageSlice[4], servers)
+	if er != "" {
+		fmt.Println(er)
+	}
+
+	fmt.Println("getting user from ID")
+
+	s.User()
+
+	newUser, err := s.User("96089969990336512")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(servers)
+
+	fmt.Println(server.Authorized)
+
+	server.Authorized[newUser.ID] = true
+
+}
+
 func Start(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
 	fmt.Println("Start")
 
-	server := getTargetServer(messageSlice, servers)
+	server, err := getTargetServer(messageSlice[2], servers)
+	if err != "" {
+		msg := fmt.Sprintf("%v", err)
+		s.ChannelMessageSend(m.ChannelID, msg)
+		return
+	}
 
 	//Check if user is authorized to interact with
 	if server.Authorized[m.Author.ID] {
@@ -183,7 +238,12 @@ func Start(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg
 func Stop(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
 	fmt.Println("Stop")
 
-	server := getTargetServer(messageSlice, servers)
+	server, err := getTargetServer(messageSlice[2], servers)
+	if err != "" {
+		msg := fmt.Sprintf("%v", err)
+		s.ChannelMessageSend(m.ChannelID, msg)
+		return
+	}
 
 	//Check if user is authorized to interact with
 	if server.Authorized[m.Author.ID] {
@@ -203,7 +263,12 @@ func Stop(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.
 
 func Reboot(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
 	fmt.Println("Reboot")
-	server := getTargetServer(messageSlice, servers)
+	server, err := getTargetServer(messageSlice[2], servers)
+	if err != "" {
+		msg := fmt.Sprintf("%v", err)
+		s.ChannelMessageSend(m.ChannelID, msg)
+		return
+	}
 
 	//Check if user is authorized to interact with
 	if server.Authorized[m.Author.ID] {
@@ -241,7 +306,12 @@ func Reboot(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cf
 
 func Info(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
 
-	targetServer := getTargetServer(messageSlice, servers)
+	targetServer, err := getTargetServer(messageSlice[2], servers)
+	if err != "" {
+		msg := fmt.Sprintf("%v", err)
+		s.ChannelMessageSend(m.ChannelID, msg)
+		return
+	}
 
 	instanceInfo := services.GetInstanceInfo(targetServer)
 
@@ -279,6 +349,9 @@ func List(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.
 			fmt.Println(server)
 
 			instanceInfo := services.GetInstanceInfo(server)
+
+			fmt.Println(instanceInfo)
+
 			ip := instanceInfo["ip"]
 			state := instanceInfo["state"]
 
@@ -311,10 +384,10 @@ func List(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.
 
 func Help(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
 	list := "`!list`"
-	start := "`!start server <server_id>`"
-	stop := "`!stop server <server_id>`"
-	reboot := "`!reboot server <server_id>`"
-	info := "`!info server <server_id>`"
+	start := "`!server start <server_id>`"
+	stop := "`!server stop <server_id>`"
+	reboot := "`!server reboot <server_id>`"
+	info := "`!server info <server_id>`"
 
 	msg := fmt.Sprintf(`
 Here are my current commands:

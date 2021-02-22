@@ -15,6 +15,5 @@
 # vendor/
 
 .env
-
-config.json
+ServerBoi
 __debug_bin

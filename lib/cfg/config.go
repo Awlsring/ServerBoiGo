@@ -39,7 +39,6 @@ func LoadConfig() map[int]Server {
 	servers := make(map[int]Server)
 
 	for i := 0; i < len(config.Servers); i++ {
-		servers[config.Servers[i].ID] = config.Servers[i]
 
 		var authorized = make(map[string]bool)
 
@@ -51,6 +50,8 @@ func LoadConfig() map[int]Server {
 		}
 
 		config.Servers[i].Authorized = authorized
+
+		servers[config.Servers[i].ID] = config.Servers[i]
 	}
 
 	fmt.Println(servers)
