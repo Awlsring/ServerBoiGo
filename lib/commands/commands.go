@@ -179,12 +179,22 @@ func Server(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cf
 func stats(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
 	fmt.Println("CPU")
 
-	server, er := getTargetServer(messageSlice[1], servers)
-	if er != "" {
-		fmt.Println(er)
-	}
+	var msg string
 
-	msg := services.GetServerCPU(server)
+	instanceInfo := services.GetInstanceInfo(targetServer)
+	state := instanceInfo["state"]
+
+	if state == "running" {
+		server, er := getTargetServer(messageSlice[1], servers)
+		if er != "" {
+			fmt.Println(er)
+		}
+
+		msg = services.GetServerCPU(server)
+
+	} else {
+		msg = fmt.Sprintf("The server must be running to get stats. The server is currently `%v`", state)
+	}
 
 	s.ChannelMessageSend(m.ChannelID, msg)
 
@@ -342,11 +352,11 @@ func Info(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.
 
 	if ip != "" {
 		msg = fmt.Sprintf("%v and its IP is %v", msg, ip)
-	}
-
-	if port, ok := targetServer.ServerInfo["Port"]; ok {
-		msg = fmt.Sprintf("%v:%v.", msg, port)
+		if port, ok := targetServer.ServerInfo["Port"]; ok {
+			msg = fmt.Sprintf("%v:%v.", msg, port)
+		}
 	} else {
+
 		msg = fmt.Sprintf("%v.", msg)
 	}
 
@@ -379,10 +389,9 @@ func List(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.
 
 			if ip != "" {
 				comsg = fmt.Sprintf("%v | IP: %v", comsg, ip)
-			}
-
-			if port, ok := server.ServerInfo["Port"]; ok {
-				comsg = fmt.Sprintf("%v:%v", comsg, port)
+				if port, ok := server.ServerInfo["Port"]; ok {
+					comsg = fmt.Sprintf("%v:%v", comsg, port)
+				}
 			}
 
 			comsg = fmt.Sprintf("%v | Status: %v\n", comsg, state)
