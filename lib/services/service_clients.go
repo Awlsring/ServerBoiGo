@@ -17,6 +17,88 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
+func RunServerBackup(server cfg.Server) string {
+	var msg string
+
+	if server.ServiceInfo["Service"] == "aws" {
+		client := createSSMClient(server)
+
+		msg = awsRunServerBackupCommand(client, server)
+
+	} else {
+		msg = "No provided service"
+	}
+
+	return msg
+}
+
+func awsRunServerBackupCommand(client ssm.Client, server cfg.Server) string {
+	docName := "ServerBackup"
+	instanceID := server.ServiceInfo["InstanceID"]
+
+	//FIX Data Ingestion of ServerInfo params
+	source := []string{
+		server.ServerInfo["SaveSource"],
+	}
+
+	destination := []string{
+		server.ServerInfo["SaveDestination"],
+	}
+
+	parameters := map[string][]string{
+		"Source":      source,
+		"Destination": destination,
+	}
+
+	sendInput := &ssm.SendCommandInput{
+		DocumentName: &docName,
+		InstanceIds: []string{
+			instanceID,
+		},
+		Parameters: parameters,
+	}
+
+	commandResp, err := client.SendCommand(context.TODO(), sendInput)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	getInput := &ssm.GetCommandInvocationInput{
+		CommandId:  commandResp.Command.CommandId,
+		InstanceId: &instanceID,
+	}
+
+	var msg string
+
+	for {
+		time.Sleep(1 * time.Second)
+
+		invocResp, err := client.GetCommandInvocation(context.TODO(), getInput)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		fmt.Println(invocResp)
+
+		if invocResp.Status == "Success" {
+
+			msg = "Save has been backed up."
+
+			break
+		} else if invocResp.Status == "Failed" {
+
+			msg = "Function has failed."
+
+			break
+
+		}
+
+	}
+
+	return msg
+
+}
+
 func GetServerCPU(server cfg.Server) string {
 	var msg string
 
@@ -48,8 +130,6 @@ func awsGetInstanceUtil(client ssm.Client, server cfg.Server) string {
 		fmt.Println(err)
 	}
 
-	fmt.Println(*commandResp.Command.CommandId)
-
 	getInput := &ssm.GetCommandInvocationInput{
 		CommandId:  commandResp.Command.CommandId,
 		InstanceId: &instanceID,
@@ -72,6 +152,12 @@ func awsGetInstanceUtil(client ssm.Client, server cfg.Server) string {
 			msg = *invocResp.StandardOutputContent
 
 			break
+		} else if invocResp.Status == "Failed" {
+
+			msg = "Function has failed"
+
+			break
+
 		}
 
 	}

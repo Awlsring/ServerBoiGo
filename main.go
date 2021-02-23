@@ -38,6 +38,7 @@ var channels = map[string]bool{
 var commandMap = map[string]func(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string){
 	"!server": commands.Server,
 	"!list":   commands.List,
+	"!ls":     commands.List,
 	"!help":   commands.Help,
 }
 
@@ -84,7 +85,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if command, ok := commandMap[command]; ok {
 			go command(s, m, servers, messageSlice)
 		} else {
-			msg := fmt.Sprintf("'%v' is not a command.", m.Content)
+			msg := fmt.Sprintf("`%v` is not a command.", m.Content)
 
 			s.ChannelMessageSend(m.ChannelID, msg)
 		}

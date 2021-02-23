@@ -159,12 +159,13 @@ func Server(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cf
 			"info":      Info,
 			"authorize": authorizeOnServer,
 			"stats":     stats,
+			"save":      save,
 		}
 
 		if serverFunc, ok := serverFunctions[subcommand]; ok {
 			serverFunc(s, m, servers, messageSlice)
 		} else {
-			msg := "`%v` is not a valid option for !server"
+			msg := fmt.Sprintf("`%v` is not a valid option for !server", subcommand)
 
 			s.ChannelMessageSend(m.ChannelID, msg)
 		}
@@ -176,24 +177,59 @@ func Server(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cf
 
 }
 
+func save(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
+	fmt.Printf("Save")
+
+	var msg string
+
+	server, er := getTargetServer(messageSlice[1], servers)
+	if er != "" {
+		msg := fmt.Sprintf("%v", er)
+		s.ChannelMessageSend(m.ChannelID, msg)
+		return
+	}
+
+	instanceInfo := services.GetInstanceInfo(server)
+	state := instanceInfo["state"]
+
+	if state == "running" {
+
+		premsg := "Attempting to back up save..."
+		s.ChannelMessageSend(m.ChannelID, premsg)
+
+		msg = services.RunServerBackup(server)
+
+	} else {
+		msg = fmt.Sprintf("The server must be running to get save. The server is currently %v.", state)
+	}
+
+	s.ChannelMessageSend(m.ChannelID, msg)
+
+}
+
 func stats(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
 	fmt.Println("CPU")
 
 	var msg string
 
-	instanceInfo := services.GetInstanceInfo(targetServer)
+	server, er := getTargetServer(messageSlice[1], servers)
+	if er != "" {
+		msg := fmt.Sprintf("%v", er)
+		s.ChannelMessageSend(m.ChannelID, msg)
+		return
+	}
+
+	instanceInfo := services.GetInstanceInfo(server)
 	state := instanceInfo["state"]
 
 	if state == "running" {
-		server, er := getTargetServer(messageSlice[1], servers)
-		if er != "" {
-			fmt.Println(er)
-		}
+		premsg := "Getting server stats..."
+		s.ChannelMessageSend(m.ChannelID, premsg)
 
 		msg = services.GetServerCPU(server)
 
 	} else {
-		msg = fmt.Sprintf("The server must be running to get stats. The server is currently `%v`", state)
+		msg = fmt.Sprintf("The server must be running to get stats. The server is currently %v.", state)
 	}
 
 	s.ChannelMessageSend(m.ChannelID, msg)
@@ -205,7 +241,9 @@ func authorizeOnServer(s *discordgo.Session, m *discordgo.MessageCreate, servers
 
 	server, er := getTargetServer(messageSlice[1], servers)
 	if er != "" {
-		fmt.Println(er)
+		msg := fmt.Sprintf("%v", er)
+		s.ChannelMessageSend(m.ChannelID, msg)
+		return
 	}
 
 	fmt.Println("getting user from ID")
@@ -417,6 +455,7 @@ func Help(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.
 	stop := "`!server <server_id> stop`"
 	reboot := "`!server <server_id> reboot`"
 	info := "`!server <server_id> info`"
+	stats := "`!server <server_id> stats`"
 
 	msg := fmt.Sprintf(`
 Here are my current commands:
@@ -429,9 +468,10 @@ Here are my current commands:
 %v | Stops target server. Admin or owner only.
 %v | Reboots target server. Admin or owner only.
 %v | Returns servers info.
+%v | Returns CPU, Mem, and Disk stats for instance.
 
 View my code at https://github.com/Awlsring/ServerBoiGo
-	`, list, start, stop, reboot, info)
+	`, list, start, stop, reboot, info, stats)
 
 	s.ChannelMessageSend(m.ChannelID, msg)
 }
