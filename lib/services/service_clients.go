@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"ServerBoi/cfg"
 
@@ -16,31 +17,66 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
-func GetServerCPU(server cfg.Server) {
+func GetServerCPU(server cfg.Server) string {
+	var msg string
+
 	if server.ServiceInfo["Service"] == "aws" {
 		client := createSSMClient(server)
 
-		awsGetInstanceCPU(client, server)
+		msg = awsGetInstanceUtil(client, server)
+
+	} else {
+		msg = "No provided service"
 	}
+
+	return msg
 }
 
-func awsGetInstanceCPU(client ssm.Client, server cfg.Server) {
-	docName := "GetUtilization"
+func awsGetInstanceUtil(client ssm.Client, server cfg.Server) string {
+	docName := "SystemUtilization"
 	instanceID := server.ServiceInfo["InstanceID"]
 
-	input := &ssm.SendCommandInput{
+	sendInput := &ssm.SendCommandInput{
 		DocumentName: &docName,
 		InstanceIds: []string{
 			instanceID,
 		},
 	}
 
-	resp, err := client.SendCommand(context.TODO(), input)
+	commandResp, err := client.SendCommand(context.TODO(), sendInput)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	fmt.Println(*resp.Command.StatusDetails)
+	fmt.Println(*commandResp.Command.CommandId)
+
+	getInput := &ssm.GetCommandInvocationInput{
+		CommandId:  commandResp.Command.CommandId,
+		InstanceId: &instanceID,
+	}
+
+	var msg string
+
+	for {
+		time.Sleep(1 * time.Second)
+
+		invocResp, err := client.GetCommandInvocation(context.TODO(), getInput)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		fmt.Println(invocResp)
+
+		if invocResp.Status == "Success" {
+
+			msg = *invocResp.StandardOutputContent
+
+			break
+		}
+
+	}
+
+	return msg
 }
 
 //GetInstanceInfo | Returns instances info. Only AWS currently

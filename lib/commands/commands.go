@@ -158,7 +158,7 @@ func Server(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cf
 			"reboot":    Reboot,
 			"info":      Info,
 			"authorize": authorizeOnServer,
-			"cpu":       cpu,
+			"stats":     stats,
 		}
 
 		if serverFunc, ok := serverFunctions[subcommand]; ok {
@@ -176,7 +176,7 @@ func Server(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cf
 
 }
 
-func cpu(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
+func stats(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
 	fmt.Println("CPU")
 
 	server, er := getTargetServer(messageSlice[1], servers)
@@ -184,7 +184,9 @@ func cpu(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.S
 		fmt.Println(er)
 	}
 
-	services.GetServerCPU(server)
+	msg := services.GetServerCPU(server)
+
+	s.ChannelMessageSend(m.ChannelID, msg)
 
 }
 
