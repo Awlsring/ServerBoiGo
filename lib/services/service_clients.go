@@ -4,16 +4,44 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 
 	"ServerBoi/cfg"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
+
+func GetServerCPU(server cfg.Server) {
+	if server.ServiceInfo["Service"] == "aws" {
+		client := createSSMClient(server)
+
+		awsGetInstanceCPU(client, server)
+	}
+}
+
+func awsGetInstanceCPU(client ssm.Client, server cfg.Server) {
+	docName := "GetUtilization"
+	instanceID := server.ServiceInfo["InstanceID"]
+
+	input := &ssm.SendCommandInput{
+		DocumentName: &docName,
+		InstanceIds: []string{
+			instanceID,
+		},
+	}
+
+	resp, err := client.SendCommand(context.TODO(), input)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(*resp.Command.StatusDetails)
+}
 
 //GetInstanceInfo | Returns instances info. Only AWS currently
 func GetInstanceInfo(server cfg.Server) map[string]string {
@@ -151,6 +179,50 @@ func awsDescribeInstance(client ec2.Client, server cfg.Server) (map[string]strin
 // CreateEc2Client creates a client to communicate with EC2
 func createEc2Client(server cfg.Server) ec2.Client {
 
+	creds := getRemoteCreds(server)
+
+	region := server.ServiceInfo["Region"]
+
+	client := ec2.New(ec2.Options{
+		Region:      region,
+		Credentials: creds,
+	})
+
+	return *client
+}
+
+// CreateSSMClient creates a client to communicate with EC2
+func createSSMClient(server cfg.Server) ssm.Client {
+
+	creds := getRemoteCreds(server)
+
+	region := server.ServiceInfo["Region"]
+
+	client := ssm.New(ssm.Options{
+		Region:      region,
+		Credentials: creds,
+	})
+
+	return *client
+}
+
+// CreateEc2Client creates a client to communicate with EC2
+func createCloudwatchClient(server cfg.Server) cloudwatch.Client {
+
+	creds := getRemoteCreds(server)
+
+	region := server.ServiceInfo["Region"]
+
+	client := cloudwatch.New(cloudwatch.Options{
+		Region:      region,
+		Credentials: creds,
+	})
+
+	return *client
+}
+
+func getRemoteCreds(server cfg.Server) *aws.CredentialsCache {
+
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		fmt.Printf("unable to load SDK config, %v", err)
@@ -181,15 +253,6 @@ func createEc2Client(server cfg.Server) ec2.Client {
 
 	creds := aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(*accessKey, *secretKey, *sessionToken))
 
-	// value, err := creds.Retrieve(context.TODO())
+	return creds
 
-	client := ec2.New(ec2.Options{
-		Region:      region,
-		Credentials: creds,
-	})
-	if err != nil {
-		log.Fatalf("unable to load SDK config, %v", err)
-	}
-
-	return *client
 }

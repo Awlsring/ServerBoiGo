@@ -6,6 +6,7 @@ require (
 	ServerBoi/cfg v0.0.0
 	ServerBoi/commands v0.0.0
 	ServerBoi/services v0.0.0
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.1.1 // indirect
 	github.com/bwmarrin/discordgo v0.23.2
 	github.com/joho/godotenv v1.3.0
 	github.com/pkg/errors v0.9.1 // indirect

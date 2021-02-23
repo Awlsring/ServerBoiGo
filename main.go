@@ -32,13 +32,10 @@ var channels = map[string]bool{
 	"711488008351645758": false,
 	"186263688603369473": false,
 	"698658837447704707": false,
+	"689705433174114353": false,
 }
 
 var commandMap = map[string]func(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string){
-	"!start":  commands.Start,
-	"!stop":   commands.Stop,
-	"!reboot": commands.Reboot,
-	"!info":   commands.Info,
 	"!server": commands.Server,
 	"!list":   commands.List,
 	"!help":   commands.Help,
@@ -86,6 +83,10 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 		if command, ok := commandMap[command]; ok {
 			go command(s, m, servers, messageSlice)
+		} else {
+			msg := fmt.Sprintf("'%v' is not a command.", m.Content)
+
+			s.ChannelMessageSend(m.ChannelID, msg)
 		}
 	} else {
 		fmt.Println("Else")

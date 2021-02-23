@@ -35,7 +35,7 @@ func getTargetServer(target string, servers map[int]cfg.Server) (cfg.Server, str
 	if server, ok := servers[serverID]; ok {
 		return server, ""
 	} else {
-		return cfg.Server{}, "Server ID doesnt exist in tracked servers."
+		return cfg.Server{}, fmt.Sprintf("Server ID `%v` doesn't exist in tracked servers.", serverID)
 	}
 
 }
@@ -64,8 +64,8 @@ func AddServerStageNameSet() {
 }
 
 func Fun(s *discordgo.Session, m *discordgo.MessageCreate) {
-	nou := []string{"no u", "nou", "n0 u", "no you", "noyou", "n o u", "n 0 u", "no, u"}
-	thx := []string{"thanks", "thx", "thank"}
+	nou := []string{"no u", "nou", "n0 u", "no you", "noyou", "n0u", "no you", "n0you", "n o u", "n 0 u", "no, u"}
+	thx := []string{"thanks", "thx", "thank", "ty"}
 	sorry := []string{"i'm sorry", "sorry", "my bad", "sorry"}
 
 	arrays := [...][]string{nou, thx, sorry}
@@ -148,37 +148,55 @@ func sorryFunc(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 func Server(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
 
-	subcommand := messageSlice[1]
+	if len(messageSlice) >= 3 {
 
-	serverFunctions := map[string]func(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string){
-		"start":     Start,
-		"stop":      Stop,
-		"reboot":    Reboot,
-		"info":      Info,
-		"authorize": authorizeOnServer,
-	}
+		subcommand := messageSlice[2]
 
-	if serverFunc, ok := serverFunctions[subcommand]; ok {
-		serverFunc(s, m, servers, messageSlice)
+		serverFunctions := map[string]func(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string){
+			"start":     Start,
+			"stop":      Stop,
+			"reboot":    Reboot,
+			"info":      Info,
+			"authorize": authorizeOnServer,
+			"cpu":       cpu,
+		}
+
+		if serverFunc, ok := serverFunctions[subcommand]; ok {
+			serverFunc(s, m, servers, messageSlice)
+		} else {
+			msg := "`%v` is not a valid option for !server"
+
+			s.ChannelMessageSend(m.ChannelID, msg)
+		}
 	} else {
-		msg := "'%v' is not a valid option for !server"
+		msg := fmt.Sprintf("`%v` is not a valid `!server` command. `!server` commands should be structured like `!server <server_id> <action>`", m.Content)
 
 		s.ChannelMessageSend(m.ChannelID, msg)
 	}
 
 }
 
+func cpu(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
+	fmt.Println("CPU")
+
+	server, er := getTargetServer(messageSlice[1], servers)
+	if er != "" {
+		fmt.Println(er)
+	}
+
+	services.GetServerCPU(server)
+
+}
+
 func authorizeOnServer(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
 	fmt.Println("Authorize")
 
-	server, er := getTargetServer(messageSlice[4], servers)
+	server, er := getTargetServer(messageSlice[1], servers)
 	if er != "" {
 		fmt.Println(er)
 	}
 
 	fmt.Println("getting user from ID")
-
-	s.User()
 
 	newUser, err := s.User("96089969990336512")
 	if err != nil {
@@ -196,7 +214,7 @@ func authorizeOnServer(s *discordgo.Session, m *discordgo.MessageCreate, servers
 func Start(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
 	fmt.Println("Start")
 
-	server, err := getTargetServer(messageSlice[2], servers)
+	server, err := getTargetServer(messageSlice[1], servers)
 	if err != "" {
 		msg := fmt.Sprintf("%v", err)
 		s.ChannelMessageSend(m.ChannelID, msg)
@@ -238,7 +256,7 @@ func Start(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg
 func Stop(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
 	fmt.Println("Stop")
 
-	server, err := getTargetServer(messageSlice[2], servers)
+	server, err := getTargetServer(messageSlice[1], servers)
 	if err != "" {
 		msg := fmt.Sprintf("%v", err)
 		s.ChannelMessageSend(m.ChannelID, msg)
@@ -263,7 +281,7 @@ func Stop(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.
 
 func Reboot(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
 	fmt.Println("Reboot")
-	server, err := getTargetServer(messageSlice[2], servers)
+	server, err := getTargetServer(messageSlice[1], servers)
 	if err != "" {
 		msg := fmt.Sprintf("%v", err)
 		s.ChannelMessageSend(m.ChannelID, msg)
@@ -306,7 +324,7 @@ func Reboot(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cf
 
 func Info(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
 
-	targetServer, err := getTargetServer(messageSlice[2], servers)
+	targetServer, err := getTargetServer(messageSlice[1], servers)
 	if err != "" {
 		msg := fmt.Sprintf("%v", err)
 		s.ChannelMessageSend(m.ChannelID, msg)
@@ -384,10 +402,10 @@ func List(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.
 
 func Help(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
 	list := "`!list`"
-	start := "`!server start <server_id>`"
-	stop := "`!server stop <server_id>`"
-	reboot := "`!server reboot <server_id>`"
-	info := "`!server info <server_id>`"
+	start := "`!server <server_id> start`"
+	stop := "`!server <server_id> stop`"
+	reboot := "`!server <server_id> reboot`"
+	info := "`!server <server_id> info`"
 
 	msg := fmt.Sprintf(`
 Here are my current commands:
