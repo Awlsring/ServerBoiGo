@@ -64,6 +64,8 @@ func AddServerStageNameSet() {
 }
 
 func Fun(s *discordgo.Session, m *discordgo.MessageCreate) {
+	message := strings.ToLower(m.Content)
+
 	nou := []string{"no u", "nou", "n0 u", "no you", "noyou", "n0u", "no you", "n0you", "n o u", "n 0 u", "no, u"}
 	thx := []string{"thanks", "thx", "thank", "ty"}
 	sorry := []string{"i'm sorry", "sorry", "my bad", "sorry"}
@@ -81,7 +83,7 @@ func Fun(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	for i, array := range arrays {
 		for _, opt := range array {
-			contained = strings.HasPrefix(m.Content, opt)
+			contained = strings.HasPrefix(message, opt)
 			if contained {
 				containedIn = arrayNames[i]
 				fun[containedIn](s, m)
@@ -150,7 +152,7 @@ func Server(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cf
 
 	if len(messageSlice) >= 3 {
 
-		subcommand := messageSlice[2]
+		subcommand := strings.ToLower(messageSlice[2])
 
 		serverFunctions := map[string]func(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string){
 			"start":     Start,
@@ -159,7 +161,7 @@ func Server(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cf
 			"info":      Info,
 			"authorize": authorizeOnServer,
 			"stats":     stats,
-			"save":      save,
+			"backup":    save,
 		}
 
 		if serverFunc, ok := serverFunctions[subcommand]; ok {
@@ -456,6 +458,7 @@ func Help(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.
 	reboot := "`!server <server_id> reboot`"
 	info := "`!server <server_id> info`"
 	stats := "`!server <server_id> stats`"
+	save := "`!server <server_id> backup`"
 
 	msg := fmt.Sprintf(`
 Here are my current commands:
@@ -469,9 +472,10 @@ Here are my current commands:
 %v | Reboots target server. Admin or owner only.
 %v | Returns servers info.
 %v | Returns CPU, Mem, and Disk stats for instance.
+%v | Runs a back up on the game world.
 
 View my code at https://github.com/Awlsring/ServerBoiGo
-	`, list, start, stop, reboot, info, stats)
+	`, list, start, stop, reboot, info, stats, save)
 
 	s.ChannelMessageSend(m.ChannelID, msg)
 }

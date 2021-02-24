@@ -80,7 +80,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 		fmt.Println("Message from", m.Author.ID, "in", m.ChannelID, "| Message:", m.Content)
 
-		command := messageSlice[0]
+		command := strings.ToLower(messageSlice[0])
 
 		if command, ok := commandMap[command]; ok {
 			go command(s, m, servers, messageSlice)
