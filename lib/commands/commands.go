@@ -290,7 +290,8 @@ func Start(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg
 			time.Sleep(1 * time.Second)
 		}
 
-		if port, ok := server.ServerInfo["Port"]; ok {
+		if server.ServerInfo.Port != "" {
+			port := server.ServerInfo.Port
 			ip = fmt.Sprintf("%v:%v", ip, port)
 		}
 
@@ -359,7 +360,8 @@ func Reboot(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cf
 			time.Sleep(1 * time.Second)
 		}
 
-		if port, ok := server.ServerInfo["Port"]; ok {
+		if server.ServerInfo.Port != "" {
+			port := server.ServerInfo.Port
 			ip = fmt.Sprintf("%v:%v", ip, port)
 		}
 
@@ -392,7 +394,8 @@ func Info(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.
 
 	if ip != "" {
 		msg = fmt.Sprintf("%v and its IP is %v", msg, ip)
-		if port, ok := targetServer.ServerInfo["Port"]; ok {
+		if targetServer.ServerInfo.Port != "" {
+			port := targetServer.ServerInfo.Port
 			msg = fmt.Sprintf("%v:%v.", msg, port)
 		}
 	} else {
@@ -429,7 +432,8 @@ func List(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.
 
 			if ip != "" {
 				comsg = fmt.Sprintf("%v | IP: %v", comsg, ip)
-				if port, ok := server.ServerInfo["Port"]; ok {
+				if server.ServerInfo.Port != "" {
+					port := server.ServerInfo.Port
 					comsg = fmt.Sprintf("%v:%v", comsg, port)
 				}
 			}

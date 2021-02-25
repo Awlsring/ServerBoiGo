@@ -20,7 +20,9 @@ import (
 func RunServerBackup(server cfg.Server) string {
 	var msg string
 
-	if server.ServiceInfo["Service"] == "aws" {
+	server.ServiceInfo.Service.Name()
+
+	if server.ServiceInfo.Service.Name() == "aws" {
 		client := createSSMClient(server)
 
 		msg = awsRunServerBackupCommand(client, server)
@@ -34,15 +36,15 @@ func RunServerBackup(server cfg.Server) string {
 
 func awsRunServerBackupCommand(client ssm.Client, server cfg.Server) string {
 	docName := "ServerBackup"
-	instanceID := server.ServiceInfo["InstanceID"]
+	instanceID := server.ServiceInfo.Service.Instance()
 
 	//FIX Data Ingestion of ServerInfo params
 	source := []string{
-		server.ServerInfo["SaveSource"],
+		server.Commands.BackupToS3.Source,
 	}
 
 	destination := []string{
-		server.ServerInfo["SaveDestination"],
+		server.Commands.BackupToS3.Destination,
 	}
 
 	parameters := map[string][]string{
@@ -102,7 +104,7 @@ func awsRunServerBackupCommand(client ssm.Client, server cfg.Server) string {
 func GetServerCPU(server cfg.Server) string {
 	var msg string
 
-	if server.ServiceInfo["Service"] == "aws" {
+	if server.ServiceInfo.Service.Name() == "aws" {
 		client := createSSMClient(server)
 
 		msg = awsGetInstanceUtil(client, server)
@@ -116,7 +118,7 @@ func GetServerCPU(server cfg.Server) string {
 
 func awsGetInstanceUtil(client ssm.Client, server cfg.Server) string {
 	docName := "SystemUtilization"
-	instanceID := server.ServiceInfo["InstanceID"]
+	instanceID := server.ServiceInfo.Service.Instance()
 
 	sendInput := &ssm.SendCommandInput{
 		DocumentName: &docName,
@@ -170,7 +172,7 @@ func GetInstanceInfo(server cfg.Server) map[string]string {
 
 	var instanceInfo map[string]string
 
-	if server.ServiceInfo["Service"] == "aws" {
+	if server.ServiceInfo.Service.Name() == "aws" {
 		client := createEc2Client(server)
 
 		instanceInfo, err := awsDescribeInstance(client, server)
@@ -185,7 +187,7 @@ func GetInstanceInfo(server cfg.Server) map[string]string {
 }
 
 func StartServer(server cfg.Server) {
-	if server.ServiceInfo["Service"] == "aws" {
+	if server.ServiceInfo.Service.Name() == "aws" {
 		client := createEc2Client(server)
 
 		awsStartInstance(client, server)
@@ -193,7 +195,7 @@ func StartServer(server cfg.Server) {
 }
 
 func StopServer(server cfg.Server) {
-	if server.ServiceInfo["Service"] == "aws" {
+	if server.ServiceInfo.Service.Name() == "aws" {
 		client := createEc2Client(server)
 
 		awsStopInstance(client, server)
@@ -201,7 +203,7 @@ func StopServer(server cfg.Server) {
 }
 
 func RebootServer(server cfg.Server) {
-	if server.ServiceInfo["Service"] == "aws" {
+	if server.ServiceInfo.Service.Name() == "aws" {
 		client := createEc2Client(server)
 
 		awsRebootInstance(client, server)
@@ -209,7 +211,7 @@ func RebootServer(server cfg.Server) {
 }
 
 func awsRebootInstance(client ec2.Client, server cfg.Server) {
-	instanceID := server.ServiceInfo["InstanceID"]
+	instanceID := server.ServiceInfo.Service.Instance()
 
 	input := &ec2.RebootInstancesInput{
 		InstanceIds: []string{
@@ -225,7 +227,7 @@ func awsRebootInstance(client ec2.Client, server cfg.Server) {
 }
 
 func awsStopInstance(client ec2.Client, server cfg.Server) {
-	instanceID := server.ServiceInfo["InstanceID"]
+	instanceID := server.ServiceInfo.Service.Instance()
 
 	input := &ec2.StopInstancesInput{
 		InstanceIds: []string{
@@ -241,7 +243,7 @@ func awsStopInstance(client ec2.Client, server cfg.Server) {
 }
 
 func awsStartInstance(client ec2.Client, server cfg.Server) {
-	instanceID := server.ServiceInfo["InstanceID"]
+	instanceID := server.ServiceInfo.Service.Instance()
 
 	input := &ec2.StartInstancesInput{
 		InstanceIds: []string{
@@ -260,7 +262,7 @@ func awsStartInstance(client ec2.Client, server cfg.Server) {
 func awsDescribeInstance(client ec2.Client, server cfg.Server) (map[string]string, error) {
 	fmt.Println("Starting describe")
 
-	instanceID := server.ServiceInfo["InstanceID"]
+	instanceID := server.ServiceInfo.Service.Instance()
 
 	input := &ec2.DescribeInstancesInput{
 		InstanceIds: []string{
@@ -303,7 +305,7 @@ func createEc2Client(server cfg.Server) ec2.Client {
 
 	creds := getRemoteCreds(server)
 
-	region := server.ServiceInfo["Region"]
+	region := server.ServiceInfo.Service.Geolocation()
 
 	client := ec2.New(ec2.Options{
 		Region:      region,
@@ -318,7 +320,7 @@ func createSSMClient(server cfg.Server) ssm.Client {
 
 	creds := getRemoteCreds(server)
 
-	region := server.ServiceInfo["Region"]
+	region := server.ServiceInfo.Service.Geolocation()
 
 	client := ssm.New(ssm.Options{
 		Region:      region,
@@ -333,7 +335,7 @@ func createCloudwatchClient(server cfg.Server) cloudwatch.Client {
 
 	creds := getRemoteCreds(server)
 
-	region := server.ServiceInfo["Region"]
+	region := server.ServiceInfo.Service.Geolocation()
 
 	client := cloudwatch.New(cloudwatch.Options{
 		Region:      region,
@@ -350,8 +352,8 @@ func getRemoteCreds(server cfg.Server) *aws.CredentialsCache {
 		fmt.Printf("unable to load SDK config, %v", err)
 	}
 
-	region := server.ServiceInfo["Region"]
-	accountID := server.ServiceInfo["AccountID"]
+	region := server.ServiceInfo.Service.Geolocation()
+	accountID := server.ServiceInfo.Service.Account()
 
 	roleSession := fmt.Sprintf("ServerBoiGo-%v-%v-Session", accountID, region)
 	roleArn := fmt.Sprintf("arn:aws:iam::%v:role/ServerBoiRole", accountID)

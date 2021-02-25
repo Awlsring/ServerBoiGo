@@ -16,6 +16,12 @@
                 "Region": "us-west-1",
                 "InstanceID": "i-044e820ec4e8b0335"
             },
+            "Commands": {
+                "BackupToS3": {
+                    "Source": "/home/steam/.config/unity3d/IronGate/Valheim/worlds",
+                    "Destination": "s3://sean-has-a-bucket/Valheim/"
+                }
+            },
             "Owner": "96089969990336512"
         }
     ],
