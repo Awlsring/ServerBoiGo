@@ -83,15 +83,15 @@ func (s ServiceAWS) Name() string {
 }
 
 func (s ServiceAWS) Instance() string {
-	return s.Service
+	return s.InstanceID
 }
 
 func (s ServiceAWS) Account() string {
-	return s.Service
+	return s.AccountID
 }
 
 func (s ServiceAWS) Geolocation() string {
-	return s.Service
+	return s.Region
 }
 
 // Not implemented yet

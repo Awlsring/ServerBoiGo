@@ -12,6 +12,7 @@ import (
 	"ServerBoi/services"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/rumblefrog/go-a2s"
 )
 
 type Conversation struct {
@@ -161,7 +162,8 @@ func Server(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cf
 			"info":      Info,
 			"authorize": authorizeOnServer,
 			"stats":     stats,
-			"backup":    save,
+			"backup":    backup,
+			"players":   currentPlayerCount,
 		}
 
 		if serverFunc, ok := serverFunctions[subcommand]; ok {
@@ -179,8 +181,61 @@ func Server(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cf
 
 }
 
-func save(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
-	fmt.Printf("Save")
+func currentPlayerCount(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
+	fmt.Println("PlayerCount")
+
+	var msg string
+
+	server, er := getTargetServer(messageSlice[1], servers)
+	if er != "" {
+		msg := fmt.Sprintf("%v", er)
+		s.ChannelMessageSend(m.ChannelID, msg)
+		return
+	}
+
+	instanceInfo := services.GetInstanceInfo(server)
+	state := instanceInfo["state"]
+	ip := instanceInfo["ip"]
+
+	if ip != "" && state == "running" {
+
+		port := server.ServerInfo.Port
+
+		serverInfo := steamA2SServerInfo(ip, port)
+
+		pcString := strconv.Itoa(int(serverInfo.Players))
+		msg = fmt.Sprintf("Current player count is %v.", pcString)
+
+	} else {
+		msg = fmt.Sprintf("The server must be running to get stats. The server is currently %v.", state)
+	}
+
+	s.ChannelMessageSend(m.ChannelID, msg)
+
+}
+
+func steamA2SServerInfo(ip string, port string) *a2s.ServerInfo {
+	clientString := fmt.Sprintf("%v:%v", ip, port)
+
+	client, err := a2s.NewClient(clientString)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	defer client.Close()
+
+	info, queryErr := client.QueryInfo()
+	if queryErr != nil {
+		fmt.Println(queryErr)
+	}
+
+	client.Close()
+
+	return info
+}
+
+func backup(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
+	fmt.Printf("Backup")
 
 	var msg string
 
@@ -463,6 +518,7 @@ func Help(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.
 	info := "`!server <server_id> info`"
 	stats := "`!server <server_id> stats`"
 	save := "`!server <server_id> backup`"
+	players := "`!server <server_id> players`"
 
 	msg := fmt.Sprintf(`
 Here are my current commands:
@@ -477,9 +533,10 @@ Here are my current commands:
 %v | Returns servers info.
 %v | Returns CPU, Mem, and Disk stats for instance.
 %v | Runs a back up on the game world.
+%v | Returns current server player count.
 
 View my code at https://github.com/Awlsring/ServerBoiGo
-	`, list, start, stop, reboot, info, stats, save)
+	`, list, start, stop, reboot, info, stats, save, players)
 
 	s.ChannelMessageSend(m.ChannelID, msg)
 }
