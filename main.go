@@ -172,29 +172,32 @@ func checkServerActivity(serverList map[int]cfg.Server) {
 					fmt.Printf("%v:%v", ip, port)
 
 					// ...Get player count
-					resp := commands.SteamA2SServerInfo(ip, port)
+					resp, serverErr := commands.SteamA2SServerInfo(ip, port)
+					// If error retrieving data...
+					if serverErr != nil {
+						logstr := fmt.Sprintf("Error getting player count. Error: %v", serverErr)
+						log.Println(logstr)
+					} else {
+						pc := int(resp.Players)
+						// If the player count is 0...
+						if pc == 0 {
+							if _, exists := serverCounter[server.ID]; exists {
+								log.Println("Server has had no players twice in 15 minutes, shutting down.")
+								// Save server. (TODO: Check to see if backup is enabled)
+								services.RunServerBackup(server)
+								// Stop the server
+								services.StopServer(server)
 
-					pc := int(resp.Players)
+								// and delete key from counter map
+								delete(serverCounter, server.ID)
 
-					// If the player count is 0...
-					if pc == 0 {
-						if _, exists := serverCounter[server.ID]; exists {
-							log.Println("Server has had no players twice in 15 minutes, shutting down.")
-							// Save server. (TODO: Check to see if backup is enabled)
-							services.RunServerBackup(server)
-							// Stop the server
-							services.StopServer(server)
-
-							// and delete key from counter map
-							delete(serverCounter, server.ID)
-
-						} else {
-							log.Println("Server has no players. Server will shutdown in 15 minutes if no players are active next check.")
-							// Add server to counter map
-							serverCounter[server.ID] = true
+							} else {
+								log.Println("Server has no players. Server will shutdown in 15 minutes if no players are active next check.")
+								// Add server to counter map
+								serverCounter[server.ID] = true
+							}
 						}
 					}
-
 				} else {
 					log.Println("Server isn't running.")
 				}

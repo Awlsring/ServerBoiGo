@@ -201,11 +201,14 @@ func currentPlayerCount(s *discordgo.Session, m *discordgo.MessageCreate, server
 
 		port := server.ServerInfo.Port
 
-		serverInfo := SteamA2SServerInfo(ip, port)
-
-		pcString := strconv.Itoa(int(serverInfo.Players))
-		msg = fmt.Sprintf("Current player count is %v.", pcString)
-
+		serverInfo, serverErr := SteamA2SServerInfo(ip, port)
+		if serverErr != nil {
+			log.Println(serverErr)
+			msg = "Unable to recieve server metadata."
+		} else {
+			pcString := strconv.Itoa(int(serverInfo.Players))
+			msg = fmt.Sprintf("Current player count is %v.", pcString)
+		}
 	} else {
 		msg = fmt.Sprintf("The server must be running to get player count. The server is currently %v.", state)
 	}
@@ -214,7 +217,8 @@ func currentPlayerCount(s *discordgo.Session, m *discordgo.MessageCreate, server
 
 }
 
-func SteamA2SServerInfo(ip string, port string) *a2s.ServerInfo {
+// SteamA2SServerInfo | Query steam server via A2S protocol to recieve server metadata.
+func SteamA2SServerInfo(ip string, port string) (*a2s.ServerInfo, error) {
 	clientString := fmt.Sprintf("%v:%v", ip, port)
 
 	client, err := a2s.NewClient(clientString)
@@ -231,7 +235,7 @@ func SteamA2SServerInfo(ip string, port string) *a2s.ServerInfo {
 
 	client.Close()
 
-	return info
+	return info, queryErr
 }
 
 func backup(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
@@ -318,8 +322,11 @@ func authorizeOnServer(s *discordgo.Session, m *discordgo.MessageCreate, servers
 
 }
 
+//Start | Calls a services.StartServer to run the correct API call to start the target server.
 func Start(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {
 	fmt.Println("Start")
+
+	var msg string
 
 	server, err := getTargetServer(messageSlice[1], servers)
 	if err != "" {
@@ -331,34 +338,36 @@ func Start(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg
 	//Check if user is authorized to interact with
 	if server.Authorized[m.Author.ID] {
 
-		msg := fmt.Sprintf("Starting server %v. Waiting for IP to be assigned...", server.ID)
+		msg = fmt.Sprintf("Starting server %v. Waiting for IP to be assigned...", server.ID)
 
 		s.ChannelMessageSend(m.ChannelID, msg)
 
-		services.StartServer(server)
+		success := services.StartServer(server)
 
-		//Wait for server to be assigned ip
-		ip := ""
-		for ip == "" {
-			instanceInfo := services.GetInstanceInfo(server)
-			ip = instanceInfo["ip"]
-			time.Sleep(1 * time.Second)
+		if success {
+			//Wait for server to be assigned ip
+			ip := ""
+			for ip == "" {
+				instanceInfo := services.GetInstanceInfo(server)
+				ip = instanceInfo["ip"]
+				time.Sleep(1 * time.Second)
+			}
+
+			if server.ServerInfo.Port != "" {
+				port := server.ServerInfo.Port
+				ip = fmt.Sprintf("%v:%v", ip, port)
+			}
+
+			msg = fmt.Sprintf("Server has been started on %v", ip)
+		} else {
+			msg = "Server is currently in a state where it can be started. Try again in a few minutes."
 		}
-
-		if server.ServerInfo.Port != "" {
-			port := server.ServerInfo.Port
-			ip = fmt.Sprintf("%v:%v", ip, port)
-		}
-
-		msg = fmt.Sprintf("Server has been started on %v", ip)
-
-		s.ChannelMessageSend(m.ChannelID, msg)
 
 	} else {
-		msg := "Only admin or the server owner may peform this action"
+		msg = "Only admin or the server owner may peform this action"
 
-		s.ChannelMessageSend(m.ChannelID, msg)
 	}
+	s.ChannelMessageSend(m.ChannelID, msg)
 }
 
 func Stop(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string) {

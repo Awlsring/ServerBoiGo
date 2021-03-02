@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"ServerBoi/cfg"
@@ -186,12 +187,17 @@ func GetInstanceInfo(server cfg.Server) map[string]string {
 	return instanceInfo
 }
 
-func StartServer(server cfg.Server) {
+func StartServer(server cfg.Server) bool {
+	var success bool
+
 	if server.ServiceInfo.Service.Name() == "aws" {
 		client := createEc2Client(server)
 
-		awsStartInstance(client, server)
+		success = awsStartInstance(client, server)
 	}
+
+	return success
+
 }
 
 func StopServer(server cfg.Server) {
@@ -242,7 +248,7 @@ func awsStopInstance(client ec2.Client, server cfg.Server) {
 	}
 }
 
-func awsStartInstance(client ec2.Client, server cfg.Server) {
+func awsStartInstance(client ec2.Client, server cfg.Server) bool {
 	instanceID := server.ServiceInfo.Service.Instance()
 
 	input := &ec2.StartInstancesInput{
@@ -251,11 +257,18 @@ func awsStartInstance(client ec2.Client, server cfg.Server) {
 		},
 	}
 
+	var success bool
+
 	_, err := client.StartInstances(context.TODO(), input)
 	if err != nil {
-		fmt.Println("Got an error retrieving starting EC2 instances:")
-		fmt.Println(err)
+		log.Println("Got an error retrieving starting EC2 instances:")
+		log.Println(err)
+		success = false
+	} else {
+		success = true
 	}
+
+	return success
 
 }
 
