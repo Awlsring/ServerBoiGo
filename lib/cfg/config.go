@@ -26,8 +26,9 @@ type Server struct {
 }
 
 type ServerInfo struct {
-	Password string `json:"Password"`
-	Port     string `json:"Port"`
+	Password     string `json:"Password"`
+	Port         string `json:"Port"`
+	AutoShutdown bool   `json:"AutoShutdown"`
 }
 
 type Commands struct {

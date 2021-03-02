@@ -7,9 +7,11 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"ServerBoi/cfg"
 	"ServerBoi/commands"
+	"ServerBoi/services"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
@@ -96,8 +98,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 }
 
-/// Maybe take all config stuff to its own file?
-
 func main() {
 
 	token := goDotEnvVariable("DISCORD_TOKEN")
@@ -130,6 +130,8 @@ func main() {
 		return
 	}
 
+	go checkServerActivity(servers)
+
 	// Wait here until CTRL-C or other term signal is received.
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
@@ -139,4 +141,69 @@ func main() {
 	// Cleanly close down the Discord session.
 	dg.Close()
 
+}
+
+// Move this elsewhere
+func checkServerActivity(serverList map[int]cfg.Server) {
+	// Run every 15 minutes
+	// For each server, check if running
+	// If running with no active players, mark with a counter
+	// If running with counter and no active players, shut down
+
+	serverCounter := map[int]bool{}
+
+	// Infinite for loop that'll run every 15 minutes
+	for {
+		log.Println("Starting server activity check.")
+		// Loop through each server in servers
+		for _, server := range serverList {
+			log.Printf("Checking server %v", server.Name)
+
+			// Check if server has auto shutdown available
+			if server.ServerInfo.AutoShutdown {
+				//Grab the server info
+				info := services.GetInstanceInfo(server)
+				//If the server is on...
+				if info["state"] == "running" {
+					log.Println("Checking if server is active.")
+
+					ip := info["ip"]
+					port := server.ServerInfo.Port
+					fmt.Printf("%v:%v", ip, port)
+
+					// ...Get player count
+					resp := commands.SteamA2SServerInfo(ip, port)
+
+					pc := int(resp.Players)
+
+					// If the player count is 0...
+					if pc == 0 {
+						if _, exists := serverCounter[server.ID]; exists {
+							log.Println("Server has had no players twice in 15 minutes, shutting down.")
+							// Save server. (TODO: Check to see if backup is enabled)
+							services.RunServerBackup(server)
+							// Stop the server
+							services.StopServer(server)
+
+							// and delete key from counter map
+							delete(serverCounter, server.ID)
+
+						} else {
+							log.Println("Server has no players. Server will shutdown in 15 minutes if no players are active next check.")
+							// Add server to counter map
+							serverCounter[server.ID] = true
+						}
+					}
+
+				} else {
+					log.Println("Server isn't running.")
+				}
+			} else {
+				log.Println("Server doesn't have auto shutdown enabled.")
+			}
+		}
+
+		//Check status again in 15 minutes
+		time.Sleep(15 * time.Minute)
+	}
 }

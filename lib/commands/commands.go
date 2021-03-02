@@ -201,20 +201,20 @@ func currentPlayerCount(s *discordgo.Session, m *discordgo.MessageCreate, server
 
 		port := server.ServerInfo.Port
 
-		serverInfo := steamA2SServerInfo(ip, port)
+		serverInfo := SteamA2SServerInfo(ip, port)
 
 		pcString := strconv.Itoa(int(serverInfo.Players))
 		msg = fmt.Sprintf("Current player count is %v.", pcString)
 
 	} else {
-		msg = fmt.Sprintf("The server must be running to get stats. The server is currently %v.", state)
+		msg = fmt.Sprintf("The server must be running to get player count. The server is currently %v.", state)
 	}
 
 	s.ChannelMessageSend(m.ChannelID, msg)
 
 }
 
-func steamA2SServerInfo(ip string, port string) *a2s.ServerInfo {
+func SteamA2SServerInfo(ip string, port string) *a2s.ServerInfo {
 	clientString := fmt.Sprintf("%v:%v", ip, port)
 
 	client, err := a2s.NewClient(clientString)

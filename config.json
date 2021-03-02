@@ -7,8 +7,7 @@
             "ServerInfo": {
                 "Password": "yeetus",
                 "Port": "2457",
-                "SaveSource": "/home/steam/.config/unity3d/IronGate/Valheim/worlds",
-                "SaveDestination": "s3://sean-has-a-bucket/Valheim/"
+                "AutoShutdown": true
             },
             "ServiceInfo": {
                 "Service": "aws",
