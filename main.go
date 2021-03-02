@@ -67,13 +67,14 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	// convoKey := fmt.Sprintf("%v-%v", m.Author.ID, m.ChannelID)
+	convoKey := fmt.Sprintf("%v-%v", m.Author.ID, m.ChannelID)
 
-	// if convo, ok := conversations[convoKey]; ok {
-	// 	// Resume convo logic
-	// 	fmt.Println("Resuming conversation")
-	// 	convo.CommandTree.Command()
-	// }
+	if convo, ok := conversations[convoKey]; ok {
+		// Resume convo logic
+		fmt.Println("Resuming conversation")
+		currentStage := convo.CommandTree.CurrentStage
+		convo.CommandTree.Stages[currentStage]()
+	}
 
 	messageSlice := strings.Split(m.Content, " ")
 
@@ -109,6 +110,7 @@ func main() {
 		return
 	}
 
+	// Set Discord status for a little flex.
 	dg.Identify.Presence = discordgo.GatewayStatusUpdate{
 		Game: discordgo.Activity{
 			Name: "you | Use !help to start",
@@ -120,7 +122,7 @@ func main() {
 	// Register the messageCreate func as a callback for MessageCreate events.
 	dg.AddHandler(messageCreate)
 
-	// Recieve Meassages from authorized channels ans DMs
+	// Recieve Meassages from authorized channels and DMs.
 	dg.Identify.Intents = discordgo.IntentsGuildMessages | discordgo.IntentsDirectMessages
 
 	// Open a websocket connection to Discord and begin listening.
@@ -130,6 +132,7 @@ func main() {
 		return
 	}
 
+	// Start coprocess to continuely check for running servers.
 	go checkServerActivity(servers)
 
 	// Wait here until CTRL-C or other term signal is received.
@@ -195,6 +198,12 @@ func checkServerActivity(serverList map[int]cfg.Server) {
 								log.Println("Server has no players. Server will shutdown in 15 minutes if no players are active next check.")
 								// Add server to counter map
 								serverCounter[server.ID] = true
+							}
+						} else {
+							// If player count isnt 0, remove tracking if in map
+							if _, exists := serverCounter[server.ID]; exists {
+								// Delete key from counter map
+								delete(serverCounter, server.ID)
 							}
 						}
 					}
