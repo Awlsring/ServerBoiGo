@@ -67,14 +67,14 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	convoKey := fmt.Sprintf("%v-%v", m.Author.ID, m.ChannelID)
+	// convoKey := fmt.Sprintf("%v-%v", m.Author.ID, m.ChannelID)
 
-	if convo, ok := conversations[convoKey]; ok {
-		// Resume convo logic
-		fmt.Println("Resuming conversation")
-		currentStage := convo.CommandTree.CurrentStage
-		convo.CommandTree.Stages[currentStage]()
-	}
+	// if convo, ok := conversations[convoKey]; ok {
+	// 	// Resume convo logic
+	// 	fmt.Println("Resuming conversation")
+	// 	// currentStage := convo.CommandTree.CurrentStage
+	// 	// convo.CommandTree.Stages[currentStage]()
+	// }
 
 	messageSlice := strings.Split(m.Content, " ")
 
