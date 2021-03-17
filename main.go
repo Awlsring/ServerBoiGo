@@ -44,6 +44,10 @@ var commandMap = map[string]func(s *discordgo.Session, m *discordgo.MessageCreat
 	"!help":   commands.Help,
 }
 
+var commandTreeMap = map[string]func(s *discordgo.Session, m *discordgo.MessageCreate) *commands.Conversation{
+	"!addserver": commands.AddServer,
+}
+
 // use godot package to load/read the .env file and
 // return the value of the key
 func goDotEnvVariable(key string) string {
@@ -67,14 +71,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	// convoKey := fmt.Sprintf("%v-%v", m.Author.ID, m.ChannelID)
-
-	// if convo, ok := conversations[convoKey]; ok {
-	// 	// Resume convo logic
-	// 	fmt.Println("Resuming conversation")
-	// 	// currentStage := convo.CommandTree.CurrentStage
-	// 	// convo.CommandTree.Stages[currentStage]()
-	// }
+	convoKey := fmt.Sprintf("%v-%v", m.Author.ID, m.ChannelID)
 
 	messageSlice := strings.Split(m.Content, " ")
 
@@ -85,13 +82,29 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 		command := strings.ToLower(messageSlice[0])
 
-		if command, ok := commandMap[command]; ok {
-			go command(s, m, servers, messageSlice)
+		if commandCall, ok := commandMap[command]; ok {
+			fmt.Println("Single Command")
+			go commandCall(s, m, servers, messageSlice)
+		} else if commandTreeCall, ok := commandTreeMap[command]; ok {
+			fmt.Println("Command Tree")
+			commandConvo := commandTreeCall(s, m)
+			conversations[convoKey] = *commandConvo
+			commandConvo.CommandTree.CurrentStage = 2
+			fmt.Println(commandConvo.CommandTree.CurrentStage)
+			//Breaking because trying to chnage struct field in goroutine
+			go commandConvo.CommandTree.NextStage(s, m, &commandConvo.CommandTree)
 		} else {
 			msg := fmt.Sprintf("`%v` is not a command.", m.Content)
 
 			s.ChannelMessageSend(m.ChannelID, msg)
 		}
+		//Any response with ! breaks this
+	} else if convo, ok := conversations[convoKey]; ok {
+		// Resume convo logic
+		fmt.Println("Resuming conversation")
+		convo.CommandTree.CurrentStage = 2
+		fmt.Println(convo.CommandTree.CurrentStage)
+		go convo.CommandTree.NextStage(s, m, &convo.CommandTree)
 	} else {
 		fmt.Println("Else")
 		commands.Fun(s, m)

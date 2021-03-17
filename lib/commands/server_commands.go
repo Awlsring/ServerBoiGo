@@ -20,6 +20,7 @@ func Server(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cf
 
 		subcommand := strings.ToLower(messageSlice[2])
 
+		//Find better way rather than creating this every time.
 		serverFunctions := map[string]func(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string){
 			"start":     Start,
 			"stop":      Stop,

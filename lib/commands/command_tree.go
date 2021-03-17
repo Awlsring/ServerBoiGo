@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"ServerBoi/cfg"
-
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -13,9 +11,15 @@ type Conversation struct {
 
 type CommandTree struct {
 	Name         string
-	Function     func(s *discordgo.Session, m *discordgo.MessageCreate, servers map[int]cfg.Server, messageSlice []string)
-	Stages       map[string]func(m *discordgo.MessageCreate, c *Conversation) string
-	CurrentStage string `default:"0"`
-	Locked       bool   `default:"false"`
-	Correction   bool   `default:"false"`
+	Id           string
+	Stages       map[int]func(s *discordgo.Session, m *discordgo.MessageCreate, c *CommandTree)
+	CurrentStage int  `default:"0"`
+	Locked       bool `default:"false"`
+	Correction   bool `default:"false"`
+	CommandCache map[string]string
+}
+
+func (c CommandTree) NextStage(s *discordgo.Session, m *discordgo.MessageCreate, co *CommandTree) {
+	co.CurrentStage = c.CurrentStage + 1
+	c.Stages[c.CurrentStage](s, m, &c)
 }
